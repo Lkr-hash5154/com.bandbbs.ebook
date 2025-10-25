@@ -14,19 +14,23 @@
 		    <text class="itemtext">滑动翻页</text>
 			<img src="/common/images/enter.png" style="width:40px;height: 40px;"/>
 		</list-item> -->
-		<list-item class="item" @click="routerTo('opacity')" type="item">
+		<list-item class="item" onclick="toopacity" type="item">
 		    <text class="itemtext">字体亮度</text>
 			<img src="/common/images/enter.png" style="width:40px;height: 40px;"/>
 		</list-item>
-		<list-item class="item" @click="routerTo('fontSetting')" type="item">
+		<list-item class="item" onclick="tofontsetting" type="item">
 		    <text class="itemtext">字号</text>
 			<img src="/common/images/enter.png" style="width:40px;height: 40px;"/>
 		</list-item>
-		<list-item class="item" @click="routerTo('swipe')" type="item">
+		<list-item class="item" onclick="tokeepscreenon" type="item">
+		    <text class="itemtext">屏幕常亮</text>
+			<img src="/common/images/enter.png" style="width:40px;height: 40px;"/>
+		</list-item>
+		<list-item class="item" onclick="toswipe" type="item">
 		    <text class="itemtext">滑动翻页</text>
 			<img src="/common/images/enter.png" style="width:40px;height: 40px;"/>
 		</list-item>
-		<list-item class="item" @click="routerTo('autoRead')" type="item">
+		<list-item class="item" onclick="toautoRead" type="item">
 			<text class="itemtext">自动翻页</text>
 			<img src="/common/images/enter.png" style="width:40px;height: 40px;"/>
 		</list-item>
@@ -34,17 +38,17 @@
             <text class="itemtext">清空书架</text>
         	<img src="/common/images/enter.png" style="width:40px;height: 40px;"/>
         </list-item>
-        <list-item class="item" @click="routerTo('push')" type="item">
+        <list-item class="item" onclick="topush" type="item">
             <text class="itemtext">文本同步</text>
         	<img src="/common/images/enter.png" style="width:40px;height: 40px;"/>
         </list-item>
-		<list-item class="item" @click="routerTo('about')" type="item">
+		<list-item class="item" onclick="toabout" type="item">
 		    <text class="itemtext">关于</text>
 			<img src="/common/images/enter.png" style="width:40px;height: 40px;"/>
 		</list-item>
 	</list>
 	<img static src="/common/images/mask_up.png" style="position: absolute;top: 0;left: 0;"/>
-	<img static src="/common/images/back.png" @click="back('')" style="position: absolute;left: 49.5px;top: 6.6px;width: 113px;height: 80px;"/>
+	<img static src="/common/images/back.png" @click="back('')" style="position: absolute;left: 45px;top: 6px;width: 102px;height: 72px;"/>
 	<!-- <img static src="/common/images/mask.png" style="position: absolute;left: 0px;top: 0px;width: 212px;height: 73px;"/>
 	<img static src="/common/images/back1.png" style="position: absolute;left: 36px;top: 21px;width: 42px;height: 42px;"/>
 	<text static style="position: absolute;left: 65px;top: 21px;height: 42px;font-size: 35px;font-weight:bold;line-height: 42px;color: white;text-align: center;">
@@ -60,18 +64,17 @@ import prompt from '@system.prompt'
 import app from '@system.app'
 import file from '@system.file'
 
-
 var confirm = true;
 
 export default {
-	// ÷﹢‐+-＋－×÷％
+  // ÷﹢‐+-＋－×÷％
   // 页面级组件的数据模型，影响传入数据的覆盖机制：private内定义的属性不允许被覆盖
   private: {
 
   },
   protected: {
     cPath: '',
-  	name: ''
+    name: ''
   },
   onInit() {
 
@@ -86,30 +89,32 @@ export default {
 
   },
   clearBooks(){
-	if(confirm){
-		confirm = false;
-		prompt.showToast({
-			message: '再次点击确认该操作',
-			duration: 1000
-		})
-		return;
-	}
-	file.rmdir({
-		uri: 'internal://files/books/',
-		recursive: true,
-		success: function(data) {
-			prompt.showToast({
-				message: '清空成功',
-				duration: 1000
-			})
-		},
-		fail: function(data, code) {
-			prompt.showToast({
-				message: `清空失败 ${code}`,
-				duration: 1000
-			})
-		}
-	})
+    if(confirm){
+      confirm = false;
+      prompt.showToast({
+        message: '再次点击确认该操作',
+        duration: 1000
+      })
+      return;
+    }
+    file.rmdir({
+      uri: 'internal://files/books/',
+      recursive: true,
+      success: function(){
+        prompt.showToast({
+          message: '清空成功',
+          duration: 1000
+        })
+        confirm = true;
+      },
+      fail: function(data, code){
+        prompt.showToast({
+          message: `清空失败 ${code}`,
+          duration: 1000
+        })
+        confirm = true;
+      }
+    })
   },
   onBackPress(){
 	  //console.log('onBackPress');
@@ -120,25 +125,40 @@ export default {
 	    uri: '/pages/detail'
 	  })
   },
-  routerTo(url) {
-    // 跳转到应用内的某个页面，router用法详见：文档->接口->页面路由
-	router.push({
-      uri: '/pages/' + url
-	})
+  toabout(){
+    router.push({ uri: '/pages/about/' })
+  },
+  topush(){
+    router.push({ uri: '/pages/push/' })
+  },
+  toautoRead(){
+    router.push({ uri: '/pages/autoRead/' })
+  },
+  tokeepscreenon(){
+    router.push({ uri: '/pages/keepscreenon/' })
+  },
+  toswipe(){
+    router.push({ uri: '/pages/swipe/' })
+  },
+  tofontsetting(){
+    router.push({ uri: '/pages/fontSetting/' })
+  },
+  toopacity(){
+    router.push({ uri: '/pages/opacity/' })
   },
   back(){
-  	router.back();
+    router.back();
   },
   exit(){
-	  app.terminate();
+    app.terminate();
   }
 }
 </script>
 
 <style>
 .page {
-	width: 212px;
-	height: 520px;
+	width: 192px;
+	height: 490px;
 	background-color: #000000;
 }
 
@@ -159,8 +179,8 @@ export default {
 }
 
 .list {
-	width: 212px;
-	height: 520px;
+	width: 192px;
+	height: 490px;
 	position: absolute;
 	top:0px;
 	left:0px;
@@ -170,7 +190,7 @@ export default {
 }
 
 .item {
-	height: 102px;
+	height: 92px;
 	margin-bottom: 8.8px;
 	background-color: #262626;
 	border-radius: 30px;
@@ -178,9 +198,9 @@ export default {
 }
 
 .itemtext {
-	font-size: 35px;
-	line-height: 40px;
-	width: 155px;
+	font-size: 32px;
+	line-height: 44.8px;
+	width: 192px;
 	font-weight: bold;
 	color: white;
 	margin-left: 12px;
@@ -205,7 +225,7 @@ export default {
 
 .calbtn1 {
 	color: rgb(191,98,59);
-	font-size: 30px;
+	font-size: 32px;
 	background-color: rgb(20,20,20);
 	border-radius: 15px;
 	margin: 4px;
@@ -213,7 +233,7 @@ export default {
 
 .calbtn2 {
 	color: rgb(255,255,255);
-	font-size: 30px;
+	font-size: 32px;
 	background-color: rgb(20,20,20);
 	border-radius: 15px;
 	margin: 4px;
