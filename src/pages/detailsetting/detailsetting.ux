@@ -34,7 +34,7 @@
 		</list-item>
 	</list>
 	<img static src="/common/images/mask_up.png" style="position: absolute;top: 0;left: 0;"/>
-	<img static src="/common/images/back.png" @click="back('')" style="position: absolute;left: 49.5px;top: 6.6px;width: 113px;height: 80px;"/>
+	<img static src="/common/images/back.png" @click="back('')" style="position: absolute;left: 45px;top: 6px;width: 102px;height: 72px;"/>
 	<!-- <img static src="/common/images/mask.png" style="position: absolute;left: 0px;top: 0px;width: 212px;height: 73px;"/>
 	<img static src="/common/images/back1.png" style="position: absolute;left: 36px;top: 21px;width: 42px;height: 42px;"/>
 	<text static style="position: absolute;left: 65px;top: 21px;height: 42px;font-size: 35px;font-weight:bold;line-height: 42px;color: white;text-align: center;">
@@ -134,8 +134,8 @@ export default {
 
 <style>
 .page {
-	width: 212px;
-	height: 520px;
+	width: 100%;
+	height: 100%;
 	background-color: #000000;
 }
 
@@ -156,8 +156,8 @@ export default {
 }
 
 .list {
-	width: 212px;
-	height: 520px;
+	width: 100%;
+	height: 100%;
 	position: absolute;
 	top:0px;
 	left:0px;
@@ -167,7 +167,7 @@ export default {
 }
 
 .item {
-	height: 102px;
+	height: 92px;
 	margin-bottom: 8.8px;
 	background-color: #262626;
 	border-radius: 30px;
@@ -175,9 +175,9 @@ export default {
 }
 
 .itemtext {
-	font-size: 35px;
-	line-height: 40px;
-	width: 155px;
+	font-size: 32px;
+	line-height: 44.8px;
+	width: 192px;
 	font-weight: bold;
 	color: white;
 	margin-left: 12px;
@@ -203,7 +203,7 @@ export default {
 
 .calbtn1 {
 	color: rgb(191,98,59);
-	font-size: 30px;
+	font-size: 32px;
 	background-color: rgb(20,20,20);
 	border-radius: 15px;
 	margin: 4px;
@@ -211,7 +211,7 @@ export default {
 
 .calbtn2 {
 	color: rgb(255,255,255);
-	font-size: 30px;
+	font-size: 32px;
 	background-color: rgb(20,20,20);
 	border-radius: 15px;
 	margin: 4px;
