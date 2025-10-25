@@ -46,7 +46,7 @@
   ],
   "config": {
     "logLevel": "log",
-    "designWidth": 212
+    "designWidth": 192
   },
   "router": {
     "entry": "pages/index",
@@ -87,10 +87,22 @@
       },
       "pages/swipe": {
         "component": "swipe"
+      },
+      "pages/keepscreenon": {
+        "component": "keepscreenon"
       }
     }
   },
   "display": {
     "backgroundColor": "#000000"
+  },
+  "minAPILevel": 1,
+  "packageInfo": {
+    "toolkit": "2.0.4",
+    "timeStamp": "2025-08-04T16:03:01.385Z",
+    "node": "v23.11.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "component": true
   }
 }
