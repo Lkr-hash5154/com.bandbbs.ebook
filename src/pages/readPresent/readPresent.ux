@@ -43,13 +43,13 @@
 	<!-- <text style="position:absolute;top:200px;left:6px;width:324px;height:100px;font-size:20px;color:white">{{savedPersent}}</text> -->
 
 
-	<img static src="/common/images/back.png" @click="back('')" style="position: absolute;left: 49.5px;top: 6.6px;width: 113px;height: 80px;"/>
-	<text style="position: absolute;left: 0px;top: 94.6px;width: 212px;height: 42px;font-size: 35px;font-weight: bold;color: white;text-align: center;">阅读进度</text>
+	<img static src="/common/images/back.png" @click="back('')" style="position: absolute;left: 45px;top: 6px;width: 102px;height: 72px;"/>
+	<text style="position: absolute;left: 0px;top: 86px;width: 192px;height: 44.8px;font-size: 32px;font-weight: bold;color: white;text-align: center;">阅读进度</text>
 	<!-- <img static src="/common/images/plus.png" style="position: absolute;left: 49.5px;top: 149.6px;width: 113px;height: 80px;" @click="plus('')"/>
 	<text style="position: absolute;left: 0px;top: 231px;width: 212px;height: 50px;font-size: 40px;font-weight: bold;color: white;text-align: center;">{{percent}}%</text>
 	<img static src="/common/images/minis.png" style="position: absolute;left: 49.5px;top: 288.2px;width: 113px;height: 80px;" @click="minis('')"/> -->
-	<text style="position: absolute;left: 0px;top: 376.2px;width: 212px;height: 42px;font-size: 35px;font-weight: bold;color: white;text-align: center;">确认调整</text>
-	<img static src="/common/images/conform.png" style="position: absolute;left: 49.5px;top: 433.8px;width: 113px;height: 80px;" @click="onClick('conform')"/>
+	<text style="position: absolute;left: 0px;top: 362px;width: 192px;height: 44.8px;font-size: 32px;font-weight: bold;color: white;text-align: center;">确认调整</text>
+	<img static src="/common/images/conform.png" style="position: absolute;left: 45px;top: 412px;width: 102px;height: 72px;" @click="onClick('conform')"/>
 	<number style="position: absolute; top: 149.6px;" max="100" min="0" step="1" unit="%" value="{{percent}}" @change="change"></number>
   </div>
 </template>
@@ -163,8 +163,8 @@ export default {
 
 <style>
 .page {
-	width: 212px;
-	height: 520px;
+	width: 192px;
+	height: 490px;
 	background-color: #000000;
 }
 
