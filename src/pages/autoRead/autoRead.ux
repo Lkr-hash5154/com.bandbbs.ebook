@@ -1,12 +1,12 @@
 <import name="number" src="../../components/number_choose/number_choose"></import>
 <template>
   <div class="page" style="flex-direction: column;">
-	<img static src="/common/images/back.png" @click="back('')" style="position: absolute;left: 49.5px;top: 6.6px;width: 113px;height: 80px;"/>
-	<text style="position: absolute;left: 0px;top: 94.6px;width: 212px;height: 42px;font-size: 35px;font-weight: bold;color: white;text-align: center;">自动翻页</text>
-	<text style="position: absolute;left: 0px;top: 376.2px;width: 212px;height: 42px;font-size: 35px;font-weight: bold;color: white;text-align: center;">开关</text>
-	<img static src="/common/images/Switch_ON.png" style="position: absolute;left: 49.5px;top: 433.8px;width: 113px;height: 80px;" @click="onClick" if="{{enable}}"/>
-	<img static src="/common/images/Switch_OFF.png" style="position: absolute;left: 49.5px;top: 433.8px;width: 113px;height: 80px;" @click="onClick" else/>
-	<number style="position: absolute; top: 149.6px;" max="60" min="1" step="1" unit="s" value="{{speed}}" @change="change"></number>
+	<img static src="/common/images/back.png" @click="back('')" style="position: absolute;left: 45px;top: 6px;width: 102px;height: 72px;"/>
+	<text style="position: absolute;left: 0px;top: 84.6px;width: 192px;height: 42px;font-size: 32px;font-weight: bold;color: white;text-align: center;">自动翻页</text>
+	<text style="position: absolute;left: 0px;top: 366.2px;width: 192px;height: 42px;font-size: 32px;font-weight: bold;color: white;text-align: center;">开关</text>
+	<img static src="/common/images/Switch_ON.png" style="position: absolute;left: 45px;top: 410px;width: 102px;height: 72px;" @click="onClick" if="{{enable}}"/>
+	<img static src="/common/images/Switch_OFF.png" style="position: absolute;left: 45px;top: 410px;width: 102px;height: 72px;" @click="onClick" else/>
+	<number style="position: absolute; top: 139.6px;" max="60" min="1" step="1" unit="s" value="{{speed}}" @change="change"></number>
   </div>
 </template>
 
@@ -65,8 +65,8 @@ export default {
 
 <style>
 .page {
-	width: 212px;
-	height: 520px;
+	width: 192px;
+	height: 490px;
 	background-color: #000000;
 }
 
