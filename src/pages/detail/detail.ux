@@ -2,7 +2,7 @@
 	<div class="page">
 	  <!-- scroll 组件：绑定 scrolltop 与 scrollbottom 事件 -->
 	  <scroll id="scrollId"
-		style="position: absolute; width: 212px; height: 520px;"
+		style="position: absolute; width: 192px; height: 490px;"
 		scroll-y="{{true}}"
 		@scroll="onScroll"
 		@scrolltop="onScrollTop"
@@ -12,23 +12,23 @@
 		>
 
 		<!-- 内容容器采用 flex 布局 -->
-		<div id="contentContainer" style="position: absolute; padding:100px 0px; width:212px; flex-direction: column;">
+		<div id="contentContainer" style="position: absolute; padding:100px 0px; width:192px; flex-direction: column;">
 		  <!-- 上方加载提示 -->
 		  <text if="{{loadingPrev}}"
-			style="width: 212px; text-align: center; color: #0D91FF; font-size: 24px;padding: 10px 0;">
+			style="width: 192px; text-align: center; color: rgba(13,145,255,{{opacity/100}}); font-size: 24px;padding: 10px 0;">
 			加载中...
 		  </text>
 
 		  <!-- 循环显示双页文本 -->
 		  <text for="{{segments}}"
 			id="{{'segment-' + $idx}}"
-			style="width: 212px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: bold; line-height: {{lineHeight}}px; ">
+			style="width: 192px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: bold; line-height: {{lineHeight}}px; ">
 			{{$item.text}}
 		  </text>
 
 		  <!-- 下方加载提示 -->
 		  <text if="{{loadingNext}}"
-			style="width: 212px; text-align: center; color: #0D91FF; font-size: 24px;padding: 10px 0;">
+			style="width: 192px; text-align: center; color: rgba(13,145,255,{{opacity/100}}); font-size: 24px;padding: 10px 0;">
 			加载中...
 		  </text>
 		</div>
@@ -36,9 +36,9 @@
 
 	  <!-- 底部其他交互按钮 -->
 	  <img show="{{showSetting}}" src="/common/images/mask_up.png" style="position: absolute; top: 0; left: 0;"/>
-	  <img show="{{showSetting}}" src="/common/images/back.png" @click="back" style="position: absolute; left: 49.5px;top: 6.6px;width: 113px;height: 80px;"/>
-	  <img show="{{showSetting}}" src="/common/images/mask_down.png" style="position: absolute; left: 0px; top: 389px;"/>
-	  <img show="{{showSetting}}" src="/common/images/more.png" style="position: absolute; left: 49.5px;top: 433.8px;width: 113px;height: 80px;" @click="gotoSetting"/>
+	  <img show="{{showSetting}}" src="/common/images/back.png" @click="back" style="position: absolute; left: 45px;top: 6px;width: 102px;height: 72px;"/>
+	  <img show="{{showSetting}}" src="/common/images/mask_down.png" style="position: absolute; left: 0px; top: 372px;"/>
+	  <img show="{{showSetting}}" src="/common/images/more.png" style="position: absolute; left: 45px;top: 412px;width: 102px;height: 72px;" @click="gotoSetting"/>
 
 	  <!-- <text style="position: absolute; left: 0px; top: 240px; width: 212px; font-weight:bold; font-size:20px; color:blue;">
 		{{debugOutput}}
@@ -89,6 +89,12 @@
 	  onInit(){
 		var that = this;
 		// 初次启动提示（保持原有逻辑）
+		storage.get({
+    	  key: 'keepScreenOn',
+    	  success: function(data) {
+     	  that.keepScreenOn = (data === 'true')
+          }
+        });
 		storage.get({
 		  key: 'EBOOK_TIPS',
 		  success: function(data) {
@@ -337,38 +343,42 @@
 		}
 	  },
 	  loadNextSegment(){
-		var that = this;
-		let lastSeg = that.segments[that.segments.length - 1];
-		let newOffset = lastSeg.offset + lastSeg.length;
-		if(newOffset >= allSize){
-		  this.loadingNext = false;
-		  return;
-		}
-  		  this.readFileText(newOffset, function (str, bytesRead) {
-		  that.loadingNext = false;
-		  if(str){
-			that.segments.push({ text: str, offset: newOffset, length: bytesRead });
-			// 若超过两页，移除顶部页面
-  			  if (that.segments.length > 2) {
-				that.segments.shift();
-			  that.$element("segment-0").getBoundingClientRect({
-				success: function(rect){
-				  let removedHeight = rect.height;
-				  // 调用 scrollBy 向上偏移 removedHeight，确保当前阅读部分保持位置不变
-				  that.$element("scrollId").scrollBy({
-					top: -removedHeight,
-					left: 0,
-					behavior: 'instant'
-				  });
-				},
-				fail: function(){}
-			  });
-			}
-			that.currentFileOffset = that.segments[0].offset;
-			that.persent = parseInt(that.currentFileOffset * 100 / allSize);
-			that.saveData();
-		  }
-		});
+        var that = this;
+        let lastSeg = that.segments[that.segments.length - 1];
+        let newOffset = lastSeg.offset + lastSeg.length;
+        if(newOffset >= allSize){
+          this.loadingNext = false;
+          return;
+        }
+        this.readFileText(newOffset, function (str, bytesRead) {
+          that.loadingNext = false;
+          if(str){
+            that.segments.push({ text: str, offset: newOffset, length: bytesRead });
+            // 超过双页时：先测量即将被移除的顶部段落高度，再移除并滚动补偿，避免跳动
+            if (that.segments.length > 2) {
+              that.$element("segment-0").getBoundingClientRect({
+                success: function(rect){
+                  let removedHeight = rect.height;
+                  // 数据移除
+                  that.segments.shift();
+                  // 位置补偿
+                  that.$element("scrollId").scrollBy({
+                    top: -removedHeight,
+                    left: 0,
+                    behavior: 'instant'
+                  });
+                },
+                fail: function(){
+                  // 测量失败仍移除以防堆积
+                  that.segments.shift();
+                }
+              });
+            }
+            that.currentFileOffset = that.segments[0].offset;
+            that.persent = parseInt(that.currentFileOffset * 100 / allSize);
+            that.saveData();
+          }
+        });
 	  },
 	  //【向上翻页】（scrolltop 触发）
 	  // 预先加载上一页内容，并插入到数组头部；如果超过两页，则移除底部页面，并调用 scrollBy 向下偏移新插入页面高度
@@ -560,7 +570,7 @@
 			behavior: 'smooth'
 		  });
 		// 预计动画时长后释放锁（延长为 600ms 以适配较慢设备）
-		setTimeout(() => { this.isPaging = false; }, 600);
+		setTimeout(() => { this.isPaging = false; }, 150);
 	},
 	nextPage() {
 		// 启动分页锁，防止在动画期间触发多次加载
@@ -571,15 +581,16 @@
 			behavior: 'smooth'
 		  });
 		// 预计动画时长后释放锁（延长为 600ms 以适配较慢设备）
-		setTimeout(() => { this.isPaging = false; }, 600);
+		setTimeout(() => { this.isPaging = false; }, 150);
 	  }
 	}
   </script>
 
 <style>
 .page {
-	width: 212px;
-	height: 520px;
+	width: 192px;
+	height: 490px;
 	background-color: #000000;
 }
 </style>
+	  
