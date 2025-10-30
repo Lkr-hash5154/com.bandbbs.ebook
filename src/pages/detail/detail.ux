@@ -46,7 +46,7 @@
 	</div>
   </template>
 
- <script>
+  <script>
 	import prompt from '@system.prompt'
 	import file from '@system.file'
 	import router from '@system.router'
@@ -66,82 +66,58 @@
 		persent: 0,          // 阅读百分比（0～100）
 		fontSize: 30,
 		lineHeight: 34,
-		pageHeigh: 480,
+		pageHeigh: 520, // 与页面 scroll 高度保持一致，避免滚动步长不对齐导致跳页
 		showSetting: true,
 		loadingNext: false,   // 防止重复加载下一页
 		loadingPrev: false,   // 防止重复加载上一页
-		page1: null,
-		page2: null,
+		// 双页模式：segments 数组最多存放两个页面内容
+		segments: [],
 		debugOutput: "初始化中...",
 		currentFileOffset: 0, // 当前顶部页面在文件中的起始偏移（字节）
 		opacity: 100,
 		swipe: 'column',
 		auto: false,
-		nowTime: "00:00",
-		timer: null,
-		savedPersent:{},
 		savedScrollOffset: 0,
-      	currentScrollTop: 0
+		currentScrollTop: 0,
+		isPaging: false, // 翻页锁，防止在翻页动画期间重复触发加载导致跳多页
+		pagingTimer: null // onScroll 去抖定时器
 	  },
 	  protected: {
 		cPath: '',
-		name: '',  // 当前书籍名称或文件名，用作全局保存进度的键
+		name: ''  // 当前书籍名称或文件名，用作全局保存进度的键
 	  },
-	  updateTime() {
-		const date = new Date();
-		let hours = date.getHours();
-		let minutes = date.getMinutes();
-
-		// 格式化小时和分钟为两位数
-		hours = hours < 10 ? '0' + hours : hours;
-		minutes = minutes < 10 ? '0' + minutes : minutes;
-
-		this.nowTime = `${hours}:${minutes}`;
-	},
-	change(e){
-		const that = this;
-		this.persent=e.detail.value;
-		this.savedPersent[this.name]["p"]=this.persent;
-		this.savedPersent[this.name]["o"]=0;
-		var offset = Math.ceil(parseInt(allSize) * this.persent/200)*2;
-		this.savedPersent[this.name]["s"]=offset;
-
-		storage.set({
-	  		key: 'EBOOK_SAVED',
-	  		value: JSON.stringify(this.savedPersent),
-	  		success: function(data) {
-				that.initReadFile();
-	  		},
-	  		fail: function(data, code) {
-			  prompt.showToast({
-			  	message: '设置失败',
-			  	duration: 2000
-			  })
-	  		}
-	  	})
-	  
-	},
-	onDestroy(){
-	  clearInterval(this.timer);
-	},
 	  onInit(){
-		this.updateTime();
-		this.timer = setInterval(() => {
-			this.updateTime();
-		}, 1000);
 		var that = this;
+		// 初次启动提示（保持原有逻辑）
 		storage.get({
-			key: 'EBOOK_SAVED',
-			success: function(data) {
-				if (data) {
-				that.savedPersent = JSON.parse(data)
-				// that.persent=that.savedPersent[that.name]["p"]
+    	  key: 'keepScreenOn',
+    	  success: function(data) {
+     	  that.keepScreenOn = (data === 'true')
+          }
+        });
+		storage.get({
+		  key: 'EBOOK_TIPS',
+		  success: function(data) {
+			if(data != "1"){
+			  storage.set({
+				key: 'EBOOK_TIPS',
+				value: '1',
+				success: function(){
+				  that.routerTo('info');
 				}
-			},
-			fail: function(data, code) {
-				////console.log(`handling fail, code = ${code}`)
+			  });
 			}
-		})
+		  },
+		  fail: function(){
+			storage.set({
+			  key: 'EBOOK_TIPS',
+			  value: '1',
+			  success: function(){
+				that.routerTo('info');
+			  }
+			});
+		  }
+		});
 	  },
 	  onShow(){
 		var that = this;
@@ -186,52 +162,44 @@
 			if (data) {
 				that.swipe = data
 			} else {
-				that.swipe = 'column'
 				storage.set({
 					key: 'EBOOK_SWIPE',
-					value: 'column',
-					success: function() {
-						storage.get({
-						  key: 'EBOOK_TIPS',
-						  success: function(data) {
-							if(data != "1"){
-							  storage.set({
-								key: 'EBOOK_TIPS',
-								value: '1',
-								success: function(){
-								  that.routerTo('info');
-								}
-							  });
-							}
-						  },
-						  fail: function(){
-							storage.set({
-							  key: 'EBOOK_TIPS',
-							  value: '1',
-							  success: function(){
-								that.routerTo('info');
-							  }
-							});
-						  }
-						});
-					}
+					value: 'column'
 				});
+				that.swipe = 'column'
 			}
 		  },
 		})
 		storage.get({
 		  key: 'EBOOK_AUTO',
-  			success: (data) => {
+	 		success: (data) => {
 				if(!data)return;
-  				const { speed, enable } = JSON.parse(data);
+				const { speed, enable } = JSON.parse(data);
 				if(enable)this.auto = speed;
 		  }
 		})
+		// 注意：不在 onShow 立刻滚动（内容可能尚未渲染），改为在加载初始两页后恢复位置
 	  },
 	  onScroll(e){
 		const that = this;
 		
 		that.currentScrollTop = e.scrollY;
+		// 如果处于翻页锁定状态，使用去抖判断滚动是否结束再释放锁
+		if(this.isPaging){
+			if(this.pagingTimer) clearTimeout(this.pagingTimer);
+			this.pagingTimer = setTimeout(function(){
+				try{
+					// 计算最近的页面对齐位置并对齐
+					let scrollY = that.currentScrollTop || 0;
+					let page = Math.round(scrollY / that.pageHeigh);
+					let target = page * that.pageHeigh;
+					that.$element("scrollId").scrollTo({ top: target, left: 0, behavior: 'instant' });
+					// 更新 savedScrollOffset 以便保存正确位置
+					that.savedScrollOffset = target;
+					that.isPaging = false;
+				}catch(e){}
+			}, 160); // 160ms 去抖，视设备可调整
+		}
 	  },
 	  //【读取进度】从全局存储中恢复当前书籍的记录（格式 {"book1":{"p":..., "s":..., "o":0}, ...}）
 	  initReadFile(){
@@ -239,22 +207,20 @@
 		storage.get({
 		  key: SAVED_KEY,
 		  success: function(data){
-			if(data){ that.savedPersent = JSON.parse(data); }
-			if(that.savedPersent[that.name] && (that.savedPersent[that.name].s || that.savedPersent[that.name].s === 0)){
-			  that.currentFileOffset = that.savedPersent[that.name].s;
-			  that.persent = that.savedPersent[that.name].p || 0;
-			  that.savedScrollOffset = that.savedPersent[that.name].o || 0;
+			var globalData = {};
+			if(data){ globalData = JSON.parse(data); }
+			if(globalData[that.name] && (globalData[that.name].s || globalData[that.name].s === 0)){
+			  that.currentFileOffset = globalData[that.name].s;
+			  that.persent = globalData[that.name].p || 0;
+			  that.savedScrollOffset = globalData[that.name].o;
+			  
 			} else {
 			  that.currentFileOffset = 0;
-			  that.persent = 0;
-			  that.savedScrollOffset = 0;
 			}
 			that.readFile();
 		  },
 		  fail: function(){
 			that.currentFileOffset = 0;
-			that.persent = 0;
-			that.savedScrollOffset = 0;
 			that.readFile();
 		  }
 		});
@@ -279,48 +245,59 @@
 		});
 	  },
 	  // 加载初始双页：先加载第一页，再加载第二页（如果存在）
+	// 将恢复滚动的逻辑放在初始两页读取完成后，避免恢复时页面高度变化导致位置偏移
 	  loadInitialSegments(){
 		var that = this;
 		this.readFileText(this.currentFileOffset, function(str, bytesRead){
-		  that.page1 = { text: str, offset: that.currentFileOffset, length: bytesRead };
-		  // 加载第二页
-		  that.loadNextSegmentNoScroll();
+		  that.segments = [{ text: str, offset: that.currentFileOffset, length: bytesRead }];
+		  // 读取第二页（如果有），读取完成后再恢复滚动位置
+		  let nextOffset = that.currentFileOffset + bytesRead;
+		  if(nextOffset < allSize){
+			that.readFileText(nextOffset, function(str2, bytesRead2){
+			  if(str2){
+				that.segments.push({ text: str2, offset: nextOffset, length: bytesRead2 });
+			  }
+			  // 等待视图渲染后恢复滚动位置（短延时更稳健）
+			  setTimeout(function(){
+				try{
+				  that.$element("scrollId").scrollTo({
+					top: that.savedScrollOffset || 0,
+					left: 0,
+					behavior: 'instant'
+				  });
+				  console.log("恢复进度（初始化后）："+that.savedScrollOffset);
+				}catch(e){}
+			  }, 80);
+			});
+		  } else {
+			// 只有一页时也恢复滚动
+			setTimeout(function(){
+			  try{
+				that.$element("scrollId").scrollTo({
+				  top: that.savedScrollOffset || 0,
+				  left: 0,
+				  behavior: 'instant'
+				});
+				console.log("恢复进度（单页）："+that.savedScrollOffset);
+			  }catch(e){}
+			}, 80);
+		  }
 		});
 	  },
 	  // 不做翻页调整，仅追加一页（用于初始加载）
 	  loadNextSegmentNoScroll(){
 		var that = this;
-		let lastSeg = that.page1;
+		let lastSeg = that.segments[that.segments.length - 1];
 		let newOffset = lastSeg.offset + lastSeg.length;
-	
-		const restoreScroll = () => {
-			// 使用 setTimeout 等待UI渲染完成
-			setTimeout(() => {
-			that.$element("scrollId").scrollTo({
-				top: that.savedScrollOffset,
-				left: 0,
-				behavior: 'instant'
-			});
-			console.log("恢复进度："+that.savedScrollOffset);
-			}, 200);
-		};
-	
-		if(newOffset >= allSize) {
-			that.page2 = null; // 确保 page2 为空
-			restoreScroll();
-			return;
-		}
-	
+		if(newOffset >= allSize) return;
 		that.readFileText(newOffset, function(str, bytesRead){
-			if(str){
-			that.page2 = { text: str, offset: newOffset, length: bytesRead };
+		  if(str){
+			that.segments.push({ text: str, offset: newOffset, length: bytesRead });
 			// 更新保存信息（顶部段代表当前进度）
-			that.currentFileOffset = that.page1.offset;
+			that.currentFileOffset = that.segments[0].offset;
 			that.persent = parseInt(that.currentFileOffset * 100 / allSize);
-			} else {
-			that.page2 = null;
-			}
-			restoreScroll();
+			// that.saveData();
+		  }
 		});
 	  },
 	  //【读取文件文本】回调返回文本内容和实际读取的字节数
@@ -356,52 +333,58 @@
 		});
 	  },
 	  //【向下翻页】（scrollbottom 触发）
+	  // 追加下一页内容；若双页数量超过 2，则移除顶部页面，并调用 scrollBy 向上偏移被移除页面高度
 	  onScrollBottom(event){
+		// 如果正在执行翻页动画或正在处理加载，则忽略重复触发
+		if(this.isPaging) return;
 		if(!this.loadingNext){
 		  this.loadingNext = true;
 		  this.loadNextSegment();
 		}
 	  },
 	  loadNextSegment(){
-		var that = this;
-		if (!that.page2) {
-			that.loadingNext = false;
-			return;
-		}
-		let lastSeg = that.page2;
-		let newOffset = lastSeg.offset + lastSeg.length;
-		if(newOffset >= allSize){
-		  this.loadingNext = false;
-		  return;
-		}
-  		  this.readFileText(newOffset, function (str, bytesRead) {
-		  that.loadingNext = false;
-		  if(str){
-			const nextPageData = { text: str, offset: newOffset, length: bytesRead };
-			that.$element("segment-0").getBoundingClientRect({
-				success: function(rect){
-				  let removedHeight = rect.height;
-
-				  that.page1 = that.page2;
-				  that.page2 = nextPageData;
-
-				  that.$element("scrollId").scrollBy({
-					top: -removedHeight,
-					left: 0,
-					behavior: 'instant'
-				  });
-
-				  that.currentFileOffset = that.page1.offset;
-				  that.persent = parseInt(that.currentFileOffset * 100 / allSize);
-				  that.saveData();
-				},
-				fail: function(){}
-			});
-		  }
-		});
+        var that = this;
+        let lastSeg = that.segments[that.segments.length - 1];
+        let newOffset = lastSeg.offset + lastSeg.length;
+        if(newOffset >= allSize){
+          this.loadingNext = false;
+          return;
+        }
+        this.readFileText(newOffset, function (str, bytesRead) {
+          that.loadingNext = false;
+          if(str){
+            that.segments.push({ text: str, offset: newOffset, length: bytesRead });
+            // 超过双页时：先测量即将被移除的顶部段落高度，再移除并滚动补偿，避免跳动
+            if (that.segments.length > 2) {
+              that.$element("segment-0").getBoundingClientRect({
+                success: function(rect){
+                  let removedHeight = rect.height;
+                  // 数据移除
+                  that.segments.shift();
+                  // 位置补偿
+                  that.$element("scrollId").scrollBy({
+                    top: -removedHeight,
+                    left: 0,
+                    behavior: 'instant'
+                  });
+                },
+                fail: function(){
+                  // 测量失败仍移除以防堆积
+                  that.segments.shift();
+                }
+              });
+            }
+            that.currentFileOffset = that.segments[0].offset;
+            that.persent = parseInt(that.currentFileOffset * 100 / allSize);
+            that.saveData();
+          }
+        });
 	  },
 	  //【向上翻页】（scrolltop 触发）
+	  // 预先加载上一页内容，并插入到数组头部；如果超过两页，则移除底部页面，并调用 scrollBy 向下偏移新插入页面高度
 	  onScrollTop(event){
+		// 同样加锁避免重复触发
+		if(this.isPaging) return;
 		if(!this.loadingPrev && this.currentFileOffset > 0){
 		  this.loadingPrev = true;
 		  this.loadPrevSegment();
@@ -409,24 +392,21 @@
 	  },
 	  loadPrevSegment(){
 		var that = this;
-		let firstSeg = that.page1;
+		let firstSeg = that.segments[0];
 		let newOffset = firstSeg.offset - txtSizePage * 2;
 		if(newOffset < 0) newOffset = 0;
 		if(firstSeg.offset <= 0){
 		  this.loadingPrev = false;
 		  return;
 		}
-  		this.readFileText(newOffset, function (str, bytesRead) {
+  		  this.readFileText(newOffset, function (str, bytesRead) {
 		  that.loadingPrev = false;
 		  if(str){
-			const prevPageData = { text: str, offset: newOffset, length: bytesRead };
-
-			that.page2 = that.page1;
-			that.page1 = prevPageData;
-
+			that.segments.unshift({ text: str, offset: newOffset, length: bytesRead });
 			that.$element("segment-0").getBoundingClientRect({
 			  success: function(rect){
 				let insertedHeight = rect.height;
+				// 向下滚动 insertedHeight，保持当前内容位置不变
 				that.$element("scrollId").scrollBy({
 				  top: insertedHeight,
 				  left: 0,
@@ -435,8 +415,11 @@
 			  },
 			  fail: function(){}
 			});
-
-			that.currentFileOffset = that.page1.offset;
+			// 若超过两页，移除底部页面
+			if(that.segments.length > 2){
+			  that.segments.pop();
+			}
+			that.currentFileOffset = that.segments[0].offset;
 			that.persent = parseInt(that.currentFileOffset * 100 / allSize);
 			that.saveData();
 		  }
@@ -463,41 +446,57 @@
 		storage.get({
 		  key: SAVED_KEY,
 		  success: function(data){
-
-			if(data){ that.savedPersent = JSON.parse(data); }
-			that.savedPersent[that.name] = {
+			var globalData = {};
+			if(data){ globalData = JSON.parse(data); }
+			globalData[that.name] = {
 			  s: that.currentFileOffset,
 			  p: that.persent,
 			  o: that.currentScrollTop
 			};
 			storage.set({
 			  key: SAVED_KEY,
-			  value: JSON.stringify(that.savedPersent)
+			  value: JSON.stringify(globalData)
 			});
 		  },
 		  fail: function(){
-
-			that.savedPersent[that.name] = {
+			var globalData = {};
+			globalData[that.name] = {
 			  s: that.currentFileOffset,
 			  p: that.persent,
 			  o: that.currentScrollTop
 			};
 			storage.set({
 			  key: SAVED_KEY,
-			  value: JSON.stringify(that.savedPersent)
+			  value: JSON.stringify(globalData)
 			});
 		  }
 		});
 		console.log('保存数据: '+ this.name + ': ' + this.currentFileOffset + ' ' + this.persent + ' ' + this.currentScrollTop);
 	  },
 	  onHide(){
-		this.saveData();
+		// 先保存进度
+		try{ this.saveData(); }catch(e){}
+		// 处理自动翻页定时器
+		if(autoInterval){
+			clearInterval(autoInterval);
+			autoInterval = null;
+			prompt.showToast({
+					message: '已关闭自动翻页',
+					duration: 2000
+				});
+			brightness.setKeepScreenOn({ keepScreenOn: false });
+		}
 	  },
 	  onDestroy(){
 		if (this.auto) {
 			clearInterval(autoInterval);
 			autoInterval = null;
 			brightness.setKeepScreenOn({ keepScreenOn: false });
+		}
+		// 清理 onScroll 去抖定时器
+		if(this.pagingTimer){
+			clearTimeout(this.pagingTimer);
+			this.pagingTimer = null;
 		}
 	  },
 	  onBackPress(){
@@ -523,9 +522,9 @@
 			if (this.showSetting) {
 				this.showSetting = false;
 			} else {
-				if (event.offsetY <= 158) {
+				if (event.offsetY <= 178) {
 					this.lastPage();
-				} else if (event.offsetY <= 322) {
+				} else if (event.offsetY <= 342) {
 					this.showSetting = !this.showSetting;
 				} else {
 					this.nextPage();
@@ -557,36 +556,33 @@
 			brightness.setKeepScreenOn({ keepScreenOn: true });
 		}
 	},
-	onHide(){
-		if(autoInterval){
-			clearInterval(autoInterval);
-			autoInterval = null;
-			prompt.showToast({
-					message: '已关闭自动翻页',
-					duration: 2000
-				});
-			brightness.setKeepScreenOn({ keepScreenOn: false });
-		}
-	},
 	onTxtSwipe(event){
 		if(event.direction === 'right'){
 		  this.back();
 		}
   	},
 	lastPage() {
+		// 启动分页锁，防止在动画期间触发多次加载
+		this.isPaging = true;
 		this.$element("scrollId").scrollBy({
 			top: - this.pageHeigh,
 			left: 0,
 			behavior: 'smooth'
-  		});
+		  });
+		// 预计动画时长后释放锁（延长为 600ms 以适配较慢设备）
+		setTimeout(() => { this.isPaging = false; }, 150);
 	},
-  	nextPage() {
+	nextPage() {
+		// 启动分页锁，防止在动画期间触发多次加载
+		this.isPaging = true;
 		this.$element("scrollId").scrollBy({
 			top: this.pageHeigh,
 			left: 0,
 			behavior: 'smooth'
-  		});
-	}
+		  });
+		// 预计动画时长后释放锁（延长为 600ms 以适配较慢设备）
+		setTimeout(() => { this.isPaging = false; }, 150);
+	  }
 	}
   </script>
 
